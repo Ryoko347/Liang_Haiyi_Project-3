@@ -1,0 +1,325 @@
+<html>
+<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.5/p5.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.5/addons/p5.dom.js"></script>
+    
+    <script src="p5.sound.js"></script>
+      <script src="p5.serialport.js"></script>
+	<script src="p5.speech.js"></script>
+	<script>
+
+	var myRec = new p5.SpeechRec('en-US', parseResult); // new P5.SpeechRec object
+	myRec.continuous = true; // do continuous recognition
+	myRec.interimResults = true; // allow partial recognition (faster, less accurate)
+
+    let serial;
+    let latestData = "waiting for data";  // you'll use this to write incoming data to the canvas
+    let splitter;
+    let diameter0 = 0, diameter1 = 0, diameter2 = 5, diameter3 =0;
+    let alpha = 1;
+    
+    //Gif
+    let startGif;
+    var startX, startY;
+    var isStage1;
+    var isStage2;
+    
+    let scene1Gif;
+    var scene1x, scene1y;
+        
+    let pauseImg;
+    var pix, piy;
+        
+    let scene2Gif; //good1
+    var scene2x, scene2y;
+    
+    let scene3Gif; //bad1
+    var scene3x, scene3y; 
+        
+	var x, y, r;
+	var dx, dy;
+    var dr;
+        
+    let timer = 3;
+    let timer1 = 7;
+    let timer2 = 7;
+
+              
+    function preload()
+        {
+            pauseImg = loadImage('asset/pauseImg.png');
+        }    
+        
+        
+	function setup()
+	{
+            myRec.start();
+        
+            startGif = createImg('asset/start.gif');
+            scene1Gif = createImg('asset/scene1.gif');
+            scene2Gif = createImg('asset/scene2.gif');
+            scene3Gif = createImg('asset/scene3.gif');
+        
+          serial = new p5.SerialPort();
+          // Get a list the ports available
+          // You should have a callback defined to see the results
+          serial.list();
+          console.log("serial.list()   ", serial.list());
+
+          //////////////////////////////////////////////////////////////////////////////////
+          ///////////////////////////////////////////////////////////////////////
+          // Assuming our Arduino is connected, let's open the connection to it
+          // Change this to the name of your arduino's serial port
+          serial.open("COM3");
+         /////////////////////////////////////////////////////////////////////////////
+         ///////////////////////////////////////////////////////////////////////////
+         ////////////////////////////////////////////////////////////////////////////
+          // Here are the callbacks that you can register
+
+          // When we connect to the underlying server
+          serial.on('connected', serverConnected);
+
+          // When we get a list of serial ports that are available
+          serial.on('list', gotList);
+          // OR
+          //serial.onList(gotList);
+
+          // When we some data from the serial port
+          serial.on('data', gotData);
+          // OR
+          //serial.onData(gotData);
+
+          // When or if we get an error
+          serial.on('error', gotError);
+          // OR
+          //serial.onError(gotError);
+
+          // When our serial port is opened and ready for read/write
+          serial.on('open', gotOpen);
+        
+        
+            // graphics stuff:
+            createCanvas(windowWidth, windowHeight);
+            x = width/2-40;
+            y = height/2-40;
+            r = 80;
+            dx = 0;
+            dy = 0;
+            startX = 0;
+            startY = 0;
+            isStage1 = false;
+            isStage2 = false;
+            scene1x = -10000;
+            scene1y = -10000;
+            scene2x = -10000;
+            scene2y = -10000;
+            scene3x = -10000;
+            scene3y = -10000;
+            pix=-10000;
+            piy=-10000;
+        
+	}
+
+        
+        // We are connected and ready to go
+        function serverConnected() {
+          console.log("Connected to Server");
+        }
+
+        // Got the list of ports
+        function gotList(thelist) {
+          console.log("List of Serial Ports:");
+          // theList is an array of their names
+          for (var i = 0; i < thelist.length; i++) {
+            // Display in the console
+            console.log(i + " " + thelist[i]);
+          }
+        }
+
+        // Connected to our serial device
+        function gotOpen() {
+          console.log("Serial Port is Open");
+        }
+
+        // Ut oh, here is an error, let's log it
+        function gotError(theerror) {
+          console.log(theerror);
+        }
+        
+        function gotData() {
+          var currentString = serial.readLine();  // read the incoming string
+          trim(currentString);                    // remove any trailing whitespace
+          if (!currentString) return;             // if the string is empty, do no more
+          console.log("currentString  ", currentString);             // println the string
+          latestData = currentString;            // save it for the draw method
+          console.log("latestData" + latestData);   //check to see if data is coming in
+          splitter = split(latestData, ',');       // split each number using the comma as a delimiter
+          //console.log("splitter[0]" + splitter[0]); 
+          diameter0 = splitter[0];                 //put the first sensor's data into a variable
+          diameter1 = splitter[1];
+          diameter2 = splitter[2]; 
+          diameter3 = splitter[3];
+        }
+
+        function gotRawData(thedata) {
+          println("gotRawData" + thedata);
+        }
+
+
+	function draw()
+	{
+        background(255, 255, 255);
+        fill(255,255,255);
+		textSize(40);
+		textAlign(LEFT);
+		text("Command: Beautiful, Strange", 20, 40);
+        text(timer, windowWidth/2, windowHeight/2);
+        noStroke(); 
+                startGif.position(startX,startY);
+        startGif.size(windowWidth, windowHeight);
+                scene1Gif.position(scene1x,scene1y);
+        scene1Gif.size(windowWidth, windowHeight);
+                scene2Gif.position(scene2x,scene2y);
+        scene2Gif.size(windowWidth, windowHeight);
+                scene3Gif.position(scene3x,scene3y);
+        scene3Gif.size(windowWidth, windowHeight);
+
+        //parseResult();
+        //ellipseMode(RADIUS);
+        //fill(255*(1-alpha),0,0);
+        //ellipse(600, 400, 50, 50);
+    
+        if(isStage1 == false) // Game Start with cover
+        {
+            if(diameter2 <= 4)
+            {
+                isStage1 = true;
+            }
+        }
+        
+        if(isStage1 == true)
+        {
+            Stage1();
+        }
+        
+        if(isStage2 == true)
+        {
+            if(dx == -3)
+            {
+                bloom();
+            }
+            else if(dx == 3)
+            {
+                noBloom();
+            }
+        }
+	}
+
+        function parseResult()
+        {
+            // recognition system will often append words into phrases.
+            // so hack here is to only use the last word:
+            var mostrecentword = myRec.resultString.split(' ').pop();
+            if(mostrecentword.indexOf("cute")!==-1) {  dx=-3;dy=0;}
+            else if(mostrecentword.indexOf("strange")!==-1) { dx=3;dy=0; }
+            console.log(mostrecentword);
+        }
+        
+        function Stage1()
+        {
+            startX = -10000;
+            startY = -10000;
+            
+            scene1x = 0;
+            scene1y = 0;
+            
+            if (frameCount % 60 == 0 && timer > 0) { 
+                timer --;
+            }
+            if(timer <=0)
+            {
+                scene1x = -10000;
+                scene1y = -10000;
+                pix = 0;
+                piy = 0;
+                image(pauseImg,pix,piy,windowWidth, windowHeight);
+                
+                if(dx == -3)
+                {
+                    isStage2 = true;
+                    isStage1 = false;
+                }
+                else if(dx == 3)
+                {
+                    isStage2 = true;
+                    isStage1 = false;
+                }
+            }   
+        }
+        
+        function bloom()
+        {
+            pix = -10000;
+            piy = -10000;
+            
+            scene2x = 0;
+            scene2y = 0;
+            
+            if (frameCount % 60 == 0 && timer1 > 0) { 
+                timer1 --;
+            }
+            if(timer1 <=0)
+            {
+                GameReset();
+            }   
+        }
+        function noBloom()
+        {
+            pix = -10000;
+            piy = -10000;
+            
+            scene3x = 0;
+            scene3y = 0;
+            
+            if (frameCount % 60 == 0 && timer2 > 0) { 
+                timer2 --;
+            }
+            if(timer2 <=0)
+            {
+                GameReset();
+            }   
+        }
+        
+        function GameReset()
+        {
+            isStarted = false;
+            
+            createCanvas(windowWidth, windowHeight);
+            x = width/2-40;
+            y = height/2-40;
+            r = 80;
+            dx = 0;
+            dy = 0;
+            startX = 0;
+            startY = 0;
+            isStage1 = false;
+            isStage2 = false;
+            scene1x = -10000;
+            scene1y = -10000;
+            scene2x = -10000;
+            scene2y = -10000;
+            scene3x = -10000;
+            scene3y = -10000;
+            pix=-10000;
+            piy=-10000;
+            timer = 3;
+            timer1 = 7;
+            timer2 = 7;
+        }
+       
+       
+</script>
+</head>
+<body>
+</body>
+</html>
