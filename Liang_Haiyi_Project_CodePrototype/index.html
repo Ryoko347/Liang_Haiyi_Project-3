@@ -1,0 +1,258 @@
+<html>
+<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.5/p5.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.5/addons/p5.dom.js"></script>
+        <script src="p5.min.js"></script>
+    
+    <script src="p5.sound.js"></script>
+      <script src="p5.serialport.js"></script>
+	<script src="p5.speech.js"></script>
+	<script>
+
+	var myRec = new p5.SpeechRec('en-US', parseResult); // new P5.SpeechRec object
+	myRec.continuous = true; // do continuous recognition
+	myRec.interimResults = true; // allow partial recognition (faster, less accurate)
+
+    let serial;
+let latestData = "waiting for data";  // you'll use this to write incoming data to the canvas
+let splitter;
+let diameter0 = 0, diameter1 = 0, diameter2 = 0, diameter3 =0;
+let alpha = 1;
+        
+	var x, y, r;
+	var dx, dy;
+        var dr;
+        
+    var x1,y1; // regular Point        
+    var x2, y2; //energy 
+        
+        
+    var hx1, hy1;
+    var hx2, hy2;
+    
+    var hActive1;
+        var hActive2;
+        var moving;
+        
+    var energy;
+        var energyAlpha;
+        
+        var dhx1, dhx2,dhy1,dhy2;
+        
+        var tx1, tx2, tx3;
+        var used;
+        var timer;
+        
+        var apple;
+        var back;
+        var player1;
+        var player2;
+        var bomb;
+        var potion;
+        
+        function preload()
+        {
+            apple = loadImage("asset/apple.png");
+            back = loadImage("asset/back.png");
+            player1 = loadImage("asset/player1.png");
+            player2 = loadImage("asset/player2.png");
+            bomb = loadImage("asset/bomb.png");
+            potion = loadImage("asset/potion.png");
+        }
+        
+        
+	function setup()
+	{
+          serial = new p5.SerialPort();
+
+  // Get a list the ports available
+  // You should have a callback defined to see the results
+  serial.list();
+  console.log("serial.list()   ", serial.list());
+
+  //////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////
+  // Assuming our Arduino is connected, let's open the connection to it
+  // Change this to the name of your arduino's serial port
+  serial.open("COM3");
+ /////////////////////////////////////////////////////////////////////////////
+ ///////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////
+  // Here are the callbacks that you can register
+
+  // When we connect to the underlying server
+  serial.on('connected', serverConnected);
+
+  // When we get a list of serial ports that are available
+  serial.on('list', gotList);
+  // OR
+  //serial.onList(gotList);
+
+  // When we some data from the serial port
+  serial.on('data', gotData);
+  // OR
+  //serial.onData(gotData);
+
+  // When or if we get an error
+  serial.on('error', gotError);
+  // OR
+  //serial.onError(gotError);
+
+  // When our serial port is opened and ready for read/write
+  serial.on('open', gotOpen);
+        
+        
+		// graphics stuff:
+		createCanvas(1280, 904);
+		fill(0, 0, 0, 255);
+		x = width/2-40;
+		y = height/2-40;
+        r = 80;
+		dx = 0;
+		dy = 0;
+        
+        tx1 = 430;
+        tx2 = -1000;
+        tx3 = -1000;
+        
+        hx1 = random(0,1000);
+        hy1 = random(0,750);
+        
+        hx2 = random(0,1000);
+        hy2 = random(0,750);
+
+        timer = 5;
+        hActive1 = false;
+        hActive2 = false;
+        moving = false;
+        point = 0;
+        energy= 0;
+        x1 = width/2-40 + 350;
+        y1 = height/2-25;
+        x2 = -1200;
+        y2 = height/2-30;
+        
+        dhx1 = 0;
+        dhx2 = 0;
+        dhy1 = 0;
+        dhy2 = 0;
+        used = false;
+        
+		// instructions:
+		//myRec.onResult = parseResult; // now in the constructor
+		myRec.start(); // start engine
+	}
+        
+        // We are connected and ready to go
+function serverConnected() {
+  console.log("Connected to Server");
+}
+
+// Got the list of ports
+function gotList(thelist) {
+  console.log("List of Serial Ports:");
+  // theList is an array of their names
+  for (var i = 0; i < thelist.length; i++) {
+    // Display in the console
+    console.log(i + " " + thelist[i]);
+  }
+}
+
+// Connected to our serial device
+function gotOpen() {
+  console.log("Serial Port is Open");
+}
+
+// Ut oh, here is an error, let's log it
+function gotError(theerror) {
+  console.log(theerror);
+}
+        
+        function gotData() {
+  var currentString = serial.readLine();  // read the incoming string
+  trim(currentString);                    // remove any trailing whitespace
+  if (!currentString) return;             // if the string is empty, do no more
+  console.log("currentString  ", currentString);             // println the string
+  latestData = currentString;            // save it for the draw method
+  console.log("latestData" + latestData);   //check to see if data is coming in
+  splitter = split(latestData, ',');       // split each number using the comma as a delimiter
+  //console.log("splitter[0]" + splitter[0]); 
+  diameter0 = splitter[0];                 //put the first sensor's data into a variable
+  diameter1 = splitter[1];
+  diameter2 = splitter[2]; 
+  diameter3 = splitter[3];
+
+
+
+}
+        
+        function gotRawData(thedata) {
+  println("gotRawData" + thedata);
+}
+
+
+	function draw()
+	{
+        background(255, 255, 255);
+        fill(255,255,255);
+		textSize(40);
+		textAlign(LEFT);
+		text("Command: Beautiful, Strange", 20, 40);
+        text(latestData, 10,100);
+
+          noStroke(); 
+  //console.log("diameter0  "  + diameter0);
+
+
+
+  ellipseMode(RADIUS);
+  fill(255*(1-alpha),0,0);
+  ellipse(600, 400, 50, 50);
+    
+if(diameter2 >= 40)
+{
+    alpha = 0;
+    if(dx == -3)
+    {
+        bloom();
+    }
+    else if(dx == 3)
+    {
+        noBloom();
+    }
+    
+}
+    else
+    {
+        alpha = 1;
+    }
+  
+	}
+
+	function parseResult()
+	{
+		// recognition system will often append words into phrases.
+		// so hack here is to only use the last word:
+		var mostrecentword = myRec.resultString.split(' ').pop();
+		if(mostrecentword.indexOf("beautiful")!==-1) {  dx=-3;dy=0;}
+		else if(mostrecentword.indexOf("strange")!==-1) { dx=3;dy=0; }
+		console.log(mostrecentword);
+	}
+        
+function bloom()
+{
+    fill(255,0,0);
+  ellipse(400, 200, 25, 25);
+}
+        function noBloom()
+        {
+                fill(0,0,255);
+                ellipse(800, 200, 25, 25);
+        }
+       
+       
+</script>
+</head>
+<body>
+</body>
+</html>
